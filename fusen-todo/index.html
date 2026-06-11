@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>付箋TODO</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>📌 付箋TODO</h1>
+    <button id="add-btn" title="タスクを追加">＋</button>
+  </header>
+
+  <main>
+    <div id="form-card">
+      <label>タスク名 *
+        <input type="text" id="f-title" placeholder="例: レポート提出" />
+      </label>
+      <label>期限
+        <input type="date" id="f-deadline" />
+      </label>
+      <label>提出先
+        <input type="text" id="f-target" placeholder="例: 山田先生 / 経理部" />
+      </label>
+      <label>紐付けURL
+        <input type="url" id="f-url" placeholder="https://..." />
+      </label>
+
+      <div class="notify-row">
+        <label><input type="checkbox" id="f-notify" /> 通知する</label>
+      </div>
+
+      <div id="notify-options">
+        <label>通知時間
+          <input type="datetime-local" id="f-notify-at" />
+        </label>
+        <div class="notify-row">
+          <label><input type="radio" name="f-sound" value="sound" checked /> 🔔 音あり</label>
+          <label><input type="radio" name="f-sound" value="silent" /> 🔕 音なし(表示のみ)</label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="ghost" id="f-cancel">キャンセル</button>
+        <button class="primary" id="f-save">登録</button>
+      </div>
+    </div>
+
+    <div id="list"></div>
+    <div id="empty" hidden>タスクはありません。「＋」から追加してください。</div>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

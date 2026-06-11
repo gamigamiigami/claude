@@ -1,0 +1,12 @@
+{
+  "name": "fusen-todo",
+  "version": "1.0.0",
+  "description": "付箋風TODOアプリ(デスクトップリマインド付き)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}
