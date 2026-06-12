@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 付箋の背景 -->
+  <rect x="20" y="20" width="472" height="472" rx="72" fill="#FFE066"/>
+  <path d="M 492 360 L 492 420 Q 492 492 420 492 L 360 492 Z" fill="#F4C430"/>
+
+  <!-- 耳の羽 -->
+  <path d="M 130 150 L 165 95 L 195 145 Z" fill="#9C7144"/>
+  <path d="M 382 150 L 347 95 L 317 145 Z" fill="#9C7144"/>
+
+  <!-- 体 -->
+  <ellipse cx="256" cy="280" rx="160" ry="155" fill="#B5835A"/>
+  <!-- おなか -->
+  <ellipse cx="256" cy="330" rx="100" ry="92" fill="#F6E7C8"/>
+
+  <!-- 羽(両腕) -->
+  <ellipse cx="116" cy="310" rx="38" ry="70" fill="#9C7144" transform="rotate(15 116 310)"/>
+  <ellipse cx="396" cy="310" rx="38" ry="70" fill="#9C7144" transform="rotate(-15 396 310)"/>
+
+  <!-- 目 -->
+  <circle cx="198" cy="245" r="56" fill="#FFFFFF"/>
+  <circle cx="314" cy="245" r="56" fill="#FFFFFF"/>
+  <circle cx="198" cy="252" r="26" fill="#3D2B1F"/>
+  <circle cx="314" cy="252" r="26" fill="#3D2B1F"/>
+  <circle cx="207" cy="243" r="9" fill="#FFFFFF"/>
+  <circle cx="323" cy="243" r="9" fill="#FFFFFF"/>
+
+  <!-- メガネ -->
+  <circle cx="198" cy="245" r="62" fill="none" stroke="#5B4632" stroke-width="11"/>
+  <circle cx="314" cy="245" r="62" fill="none" stroke="#5B4632" stroke-width="11"/>
+  <line x1="260" y1="245" x2="252" y2="245" stroke="#5B4632" stroke-width="11"/>
+  <path d="M 260 245 Q 256 238 252 245" fill="none" stroke="#5B4632" stroke-width="11"/>
+
+  <!-- くちばし -->
+  <path d="M 256 290 L 234 312 L 256 336 L 278 312 Z" fill="#F0A030"/>
+
+  <!-- ほっぺ -->
+  <ellipse cx="150" cy="312" rx="22" ry="14" fill="#F2A9A0" opacity="0.85"/>
+  <ellipse cx="362" cy="312" rx="22" ry="14" fill="#F2A9A0" opacity="0.85"/>
+
+  <!-- あし -->
+  <ellipse cx="218" cy="432" rx="26" ry="14" fill="#F0A030"/>
+  <ellipse cx="294" cy="432" rx="26" ry="14" fill="#F0A030"/>
+
+  <!-- 角帽(先生の帽子) -->
+  <path d="M 256 60 L 400 118 L 256 176 L 112 118 Z" fill="#3D3D52"/>
+  <path d="M 200 145 L 200 185 Q 256 212 312 185 L 312 145 Q 256 172 200 145 Z" fill="#2E2E40"/>
+  <line x1="400" y1="118" x2="408" y2="190" stroke="#E8B830" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="408" cy="200" r="14" fill="#E8B830"/>
+</svg>

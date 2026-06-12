@@ -30,7 +30,8 @@ function createMainWindow() {
     height: 640,
     minWidth: 360,
     minHeight: 480,
-    title: '付箋TODO',
+    title: 'ToDo丸',
+    icon: path.join(__dirname, 'build', 'icon.png'),
     backgroundColor: '#fff7c0',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -51,7 +52,14 @@ function createMainWindow() {
 }
 
 function trayIcon() {
-  // 付箋っぽい黄色い四角を描いた16x16アイコン(画像ファイル不要)
+  // フクロウ先生アイコンがあればそれを使う
+  const fromFile = nativeImage.createFromPath(
+    path.join(__dirname, 'build', 'icon.png')
+  );
+  if (!fromFile.isEmpty()) {
+    return fromFile.resize({ width: 16, height: 16 });
+  }
+  // 予備: 付箋っぽい黄色い四角を描いた16x16アイコン
   const size = 16;
   const buf = Buffer.alloc(size * size * 4);
   for (let y = 0; y < size; y++) {
@@ -70,7 +78,7 @@ function trayIcon() {
 
 function createTray() {
   tray = new Tray(trayIcon());
-  tray.setToolTip('付箋TODO(常駐中)');
+  tray.setToolTip('ToDo丸(常駐中)');
   const menu = Menu.buildFromTemplate([
     { label: '開く', click: () => mainWindow.show() },
     { type: 'separator' },

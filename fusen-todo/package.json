@@ -1,7 +1,7 @@
 {
   "name": "fusen-todo",
   "version": "1.0.0",
-  "description": "付箋風TODOアプリ(デスクトップリマインド付き)",
+  "description": "ToDo丸(とどまる) - 付箋風TODOアプリ",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

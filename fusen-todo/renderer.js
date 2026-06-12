@@ -25,6 +25,7 @@ function resetForm() {
   $('f-deadline').value = '';
   $('f-target').value = '';
   $('f-url').value = '';
+  $('f-memo').value = '';
   $('f-notify').checked = false;
   $('f-notify-at').value = '';
   document.querySelector('input[name="f-sound"][value="sound"]').checked = true;
@@ -52,6 +53,7 @@ $('f-save').addEventListener('click', async () => {
     deadline: $('f-deadline').value || null,
     target: $('f-target').value.trim() || null,
     url: $('f-url').value.trim() || null,
+    memo: $('f-memo').value.trim() || null,
     notify,
     notifyAt: notify ? new Date(notifyAt).toISOString() : null,
     sound: document.querySelector('input[name="f-sound"]:checked').value === 'sound',
@@ -106,6 +108,7 @@ function render() {
     const title = document.createElement('div');
     title.className = 'note-title';
     title.textContent = task.title;
+    if (task.memo) title.textContent += ' 📝';
     note.appendChild(title);
 
     const meta = document.createElement('div');
@@ -135,6 +138,20 @@ function render() {
       meta.appendChild(el);
     }
     note.appendChild(meta);
+
+    // メモはタスクをクリックすると開閉する
+    if (task.memo) {
+      const memo = document.createElement('div');
+      memo.className = 'note-memo';
+      memo.textContent = task.memo;
+      memo.hidden = true;
+      note.appendChild(memo);
+      note.addEventListener('click', (e) => {
+        if (e.target.closest('button, a')) return;
+        memo.hidden = !memo.hidden;
+      });
+      note.classList.add('has-memo');
+    }
 
     const actions = document.createElement('div');
     actions.className = 'note-actions';

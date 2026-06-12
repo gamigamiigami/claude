@@ -77,7 +77,8 @@ main {
 #form-card input[type="text"],
 #form-card input[type="url"],
 #form-card input[type="date"],
-#form-card input[type="datetime-local"] {
+#form-card input[type="datetime-local"],
+#form-card textarea {
   padding: 6px 8px;
   border: 1px solid #d8c75f;
   border-radius: 3px;
@@ -234,6 +235,27 @@ button.ghost {
 .note-actions button.del-btn:hover {
   background: #ffd9d9;
   border-color: #d08080;
+}
+
+#form-card textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.note.has-memo {
+  cursor: pointer;
+}
+
+.note-memo {
+  font-size: 13px;
+  color: #5d5326;
+  background: #fff7c0;
+  border-left: 3px solid #e0cf6a;
+  border-radius: 2px;
+  padding: 7px 9px;
+  margin-top: 3px;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 #empty {
