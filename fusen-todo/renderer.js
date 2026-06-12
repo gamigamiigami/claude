@@ -1,12 +1,16 @@
 let tasks = [];
 let categories = [];
 let editingId = null; // 編集中のタスクID(nullなら新規登録)
+let currentTab = 'active';
+let sortBy = localStorage.getItem('sortBy') || 'deadline';
 
 const $ = (id) => document.getElementById(id);
 const formCard = $('form-card');
 const notifyOptions = $('notify-options');
 
 const REPEAT_LABEL = { daily: '毎日', weekly: '毎週', monthly: '毎月' };
+const PRIORITY_LABEL = { high: '🔴 高', mid: '🟡 中', low: '🔵 低' };
+const PRIORITY_ORDER = { high: 0, mid: 1, low: 2 };
 
 function findCategory(name) {
   return categories.find((c) => c.name === name) || null;
@@ -53,6 +57,25 @@ $('nc-add').addEventListener('click', async () => {
   renderCategorySelect(name);
 });
 
+// ===== タブと並び替え =====
+
+for (const btn of document.querySelectorAll('#tabs .tab')) {
+  btn.addEventListener('click', () => {
+    currentTab = btn.dataset.tab;
+    for (const b of document.querySelectorAll('#tabs .tab')) {
+      b.classList.toggle('active', b === btn);
+    }
+    render();
+  });
+}
+
+$('sort-select').value = sortBy;
+$('sort-select').addEventListener('change', (e) => {
+  sortBy = e.target.value;
+  localStorage.setItem('sortBy', sortBy);
+  render();
+});
+
 // ===== フォーム開閉 =====
 
 $('add-btn').addEventListener('click', () => {
@@ -73,7 +96,30 @@ $('f-cancel').addEventListener('click', () => {
 
 $('f-notify').addEventListener('change', (e) => {
   notifyOptions.classList.toggle('open', e.target.checked);
+  // 通知日が空なら今日を入れておく
+  if (e.target.checked && !$('f-notify-date').value) {
+    $('f-notify-date').value = todayStr();
+  }
 });
+
+function todayStr() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// 時・分の入力は範囲内で止める(回転させない)
+function clampField(input) {
+  const min = Number(input.min);
+  const max = Number(input.max);
+  let v = parseInt(input.value, 10);
+  if (isNaN(v)) v = min;
+  input.value = Math.min(Math.max(v, min), max);
+}
+for (const id of ['f-notify-hour', 'f-notify-min']) {
+  $(id).addEventListener('change', (e) => clampField(e.target));
+  $(id).addEventListener('blur', (e) => clampField(e.target));
+}
 
 function resetForm() {
   editingId = null;
@@ -83,20 +129,16 @@ function resetForm() {
   $('new-cat-row').hidden = true;
   $('f-deadline').value = '';
   $('f-repeat').value = 'none';
+  $('f-priority').value = 'mid';
   $('f-target').value = '';
   $('f-url').value = '';
   $('f-memo').value = '';
   $('f-notify').checked = false;
-  $('f-notify-at').value = '';
-  document.querySelector('input[name="f-sound"][value="sound"]').checked = true;
+  $('f-notify-date').value = '';
+  $('f-notify-hour').value = 8;
+  $('f-notify-min').value = 0;
+  document.querySelector('input[name="f-sound"][value="silent"]').checked = true;
   notifyOptions.classList.remove('open');
-}
-
-// ISO日時 → datetime-local用のローカル表記
-function toLocalInput(iso) {
-  const d = new Date(iso);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 function startEdit(task) {
@@ -107,11 +149,22 @@ function startEdit(task) {
   $('new-cat-row').hidden = true;
   $('f-deadline').value = task.deadline || '';
   $('f-repeat').value = task.repeat || 'none';
+  $('f-priority').value = task.priority || 'mid';
   $('f-target').value = task.target || '';
   $('f-url').value = task.url || '';
   $('f-memo').value = task.memo || '';
   $('f-notify').checked = !!task.notify;
-  $('f-notify-at').value = task.notifyAt ? toLocalInput(task.notifyAt) : '';
+  if (task.notifyAt) {
+    const d = new Date(task.notifyAt);
+    const p = (n) => String(n).padStart(2, '0');
+    $('f-notify-date').value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    $('f-notify-hour').value = d.getHours();
+    $('f-notify-min').value = d.getMinutes();
+  } else {
+    $('f-notify-date').value = '';
+    $('f-notify-hour').value = 8;
+    $('f-notify-min').value = 0;
+  }
   document.querySelector(
     `input[name="f-sound"][value="${task.sound ? 'sound' : 'silent'}"]`
   ).checked = true;
@@ -135,12 +188,20 @@ $('f-save').addEventListener('click', async () => {
     return;
   }
   const notify = $('f-notify').checked;
-  const notifyAtInput = $('f-notify-at').value;
-  if (notify && !notifyAtInput) {
-    alert('通知時間を入力してください');
-    return;
+  let notifyAt = null;
+  if (notify) {
+    const date = $('f-notify-date').value;
+    if (!date) {
+      alert('通知する日付を入力してください');
+      return;
+    }
+    clampField($('f-notify-hour'));
+    clampField($('f-notify-min'));
+    const p = (n) => String(n).padStart(2, '0');
+    notifyAt = new Date(
+      `${date}T${p($('f-notify-hour').value)}:${p($('f-notify-min').value)}`
+    ).toISOString();
   }
-  const notifyAt = notify ? new Date(notifyAtInput).toISOString() : null;
   const sound =
     document.querySelector('input[name="f-sound"]:checked').value === 'sound';
 
@@ -149,6 +210,7 @@ $('f-save').addEventListener('click', async () => {
     category,
     deadline: $('f-deadline').value || null,
     repeat: $('f-repeat').value,
+    priority: $('f-priority').value,
     target: $('f-target').value.trim() || null,
     url: $('f-url').value.trim() || null,
     memo: $('f-memo').value.trim() || null,
@@ -230,18 +292,36 @@ function isOverdue(task) {
   return end.getTime() < Date.now();
 }
 
+function sortTasks(list) {
+  const byDeadline = (a, b) =>
+    (a.deadline || '9999') < (b.deadline || '9999') ? -1 : 1;
+  const byCreated = (a, b) => (a.createdAt < b.createdAt ? -1 : 1);
+  return [...list].sort((a, b) => {
+    if (sortBy === 'created') return byCreated(a, b);
+    if (sortBy === 'priority') {
+      const pa = PRIORITY_ORDER[a.priority || 'mid'];
+      const pb = PRIORITY_ORDER[b.priority || 'mid'];
+      if (pa !== pb) return pa - pb;
+      return byDeadline(a, b);
+    }
+    return byDeadline(a, b);
+  });
+}
+
 function render() {
   const list = $('list');
   list.innerHTML = '';
-  $('empty').hidden = tasks.length > 0;
 
-  // 未完了→期限が近い順、完了は最後
-  const sorted = [...tasks].sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1;
-    return (a.deadline || '9999') < (b.deadline || '9999') ? -1 : 1;
-  });
+  const visible = tasks.filter((t) =>
+    currentTab === 'done' ? t.done : !t.done
+  );
+  $('empty').hidden = visible.length > 0;
+  $('empty').textContent =
+    currentTab === 'done'
+      ? '完了したタスクはまだありません。'
+      : 'タスクはありません。「＋」から追加してください。';
 
-  for (const task of sorted) {
+  for (const task of sortTasks(visible)) {
     const note = document.createElement('div');
     note.className = 'note' + (task.done ? ' done' : '') + (isOverdue(task) ? ' overdue' : '');
     const cat = findCategory(task.category);
@@ -262,13 +342,19 @@ function render() {
       b.textContent = cat.name;
       badges.appendChild(b);
     }
+    {
+      const b = document.createElement('span');
+      b.className = 'badge';
+      b.textContent = PRIORITY_LABEL[task.priority || 'mid'];
+      badges.appendChild(b);
+    }
     if (task.repeat && task.repeat !== 'none') {
       const b = document.createElement('span');
       b.className = 'badge';
       b.textContent = `🔁 ${REPEAT_LABEL[task.repeat]}`;
       badges.appendChild(b);
     }
-    if (badges.childNodes.length) meta.appendChild(badges);
+    meta.appendChild(badges);
 
     if (task.deadline) {
       const el = document.createElement('div');
@@ -280,7 +366,7 @@ function render() {
       el.textContent = `📮 提出先: ${task.target}`;
       meta.appendChild(el);
     }
-    if (task.notify && task.notifyAt) {
+    if (task.notify && task.notifyAt && !task.done) {
       const el = document.createElement('div');
       el.innerHTML = `<span class="badge">${task.sound ? '🔔 音あり' : '🔕 音なし'}</span>`;
       el.append(`通知: ${fmtDateTime(task.notifyAt)}`);
@@ -326,11 +412,22 @@ function render() {
           advanceRepeat(task);
         } else {
           task.done = true;
+          task.doneAt = new Date().toISOString();
         }
         await window.api.saveTasks(tasks);
         render();
       });
       actions.appendChild(doneBtn);
+    } else {
+      const undoBtn = document.createElement('button');
+      undoBtn.textContent = '↩ 戻す';
+      undoBtn.addEventListener('click', async () => {
+        task.done = false;
+        delete task.doneAt;
+        await window.api.saveTasks(tasks);
+        render();
+      });
+      actions.appendChild(undoBtn);
     }
     const delBtn = document.createElement('button');
     delBtn.className = 'del-btn';

@@ -50,7 +50,71 @@ main {
   gap: 10px;
 }
 
+/* ===== タブと並び替え ===== */
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#tabs {
+  display: flex;
+  gap: 4px;
+}
+
+#tabs .tab {
+  padding: 6px 14px;
+  border: 1px solid #d8c75f;
+  border-radius: 14px;
+  background: #fffce0;
+  color: #7a6e3a;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+#tabs .tab.active {
+  background: #4a4220;
+  border-color: #4a4220;
+  color: #fff7c0;
+  font-weight: 600;
+}
+
+#sort-select {
+  padding: 5px 8px;
+  border: 1px solid #d8c75f;
+  border-radius: 3px;
+  background: #fffce0;
+  color: #4a4220;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 /* ===== 入力フォーム ===== */
+
+.time-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.time-row input[type="date"] {
+  flex: 1;
+}
+.time-row input[type="number"] {
+  width: 58px;
+  padding: 6px 4px 6px 8px;
+  border: 1px solid #d8c75f;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+.time-row span {
+  font-size: 13px;
+  color: #4a4220;
+}
 
 #form-card {
   background: #fffce0;

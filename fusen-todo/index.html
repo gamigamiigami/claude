@@ -12,6 +12,18 @@
   </header>
 
   <main>
+    <nav id="toolbar">
+      <div id="tabs">
+        <button class="tab active" data-tab="active">📋 やること</button>
+        <button class="tab" data-tab="done">✅ 完了</button>
+      </div>
+      <select id="sort-select" title="並び替え">
+        <option value="deadline">締め切り順</option>
+        <option value="created">登録順</option>
+        <option value="priority">優先度順</option>
+      </select>
+    </nav>
+
     <div id="form-card">
       <label>タスク名 *
         <input type="text" id="f-title" placeholder="例: レポート提出" />
@@ -35,6 +47,13 @@
           <option value="monthly">毎月</option>
         </select>
       </label>
+      <label>優先度
+        <select id="f-priority">
+          <option value="high">🔴 高</option>
+          <option value="mid" selected>🟡 中</option>
+          <option value="low">🔵 低</option>
+        </select>
+      </label>
       <label>提出先
         <input type="text" id="f-target" placeholder="例: 山田先生 / 経理部" />
       </label>
@@ -51,11 +70,17 @@
 
       <div id="notify-options">
         <label>通知時間
-          <input type="datetime-local" id="f-notify-at" />
+          <div class="time-row">
+            <input type="date" id="f-notify-date" />
+            <input type="number" id="f-notify-hour" min="0" max="23" value="8" />
+            <span>時</span>
+            <input type="number" id="f-notify-min" min="0" max="59" value="0" />
+            <span>分</span>
+          </div>
         </label>
         <div class="notify-row">
-          <label><input type="radio" name="f-sound" value="sound" checked /> 🔔 音あり</label>
-          <label><input type="radio" name="f-sound" value="silent" /> 🔕 音なし(表示のみ)</label>
+          <label><input type="radio" name="f-sound" value="sound" /> 🔔 音あり</label>
+          <label><input type="radio" name="f-sound" value="silent" checked /> 🔕 音なし(表示のみ)</label>
         </div>
       </div>
 
