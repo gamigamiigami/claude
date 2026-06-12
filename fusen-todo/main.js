@@ -4,7 +4,6 @@ const fs = require('fs');
 
 let mainWindow = null;
 let tray = null;
-let isQuitting = false;
 
 // リマインドポップアップを縦に積むための管理
 const reminderWindows = [];
@@ -98,12 +97,10 @@ function createMainWindow() {
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile('index.html');
 
-  // 閉じてもタスクトレイに常駐し、リマインドは動き続ける
-  mainWindow.on('close', (e) => {
-    if (!isQuitting) {
-      e.preventDefault();
-      mainWindow.hide();
-    }
+  // 「×」で完全終了する(通知が必要な間は最小化かトレイ格納を使う)
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    app.quit();
   });
 }
 
@@ -136,18 +133,16 @@ function createTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip('ToDo丸(常駐中)');
   const menu = Menu.buildFromTemplate([
-    { label: '開く', click: () => mainWindow.show() },
-    { type: 'separator' },
+    { label: '開く', click: () => mainWindow && mainWindow.show() },
     {
-      label: '終了',
-      click: () => {
-        isQuitting = true;
-        app.quit();
-      }
-    }
+      label: 'トレイにしまう(通知は動いたまま)',
+      click: () => mainWindow && mainWindow.hide()
+    },
+    { type: 'separator' },
+    { label: '終了', click: () => app.quit() }
   ]);
   tray.setContextMenu(menu);
-  tray.on('click', () => mainWindow.show());
+  tray.on('click', () => mainWindow && mainWindow.show());
 }
 
 // ===== リマインド =====
@@ -287,5 +282,5 @@ if (!gotLock) {
 }
 
 app.on('window-all-closed', () => {
-  // トレイ常駐のため何もしない(終了はトレイメニューから)
+  app.quit();
 });

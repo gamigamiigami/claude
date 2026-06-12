@@ -133,12 +133,13 @@ function resetForm() {
   $('f-target').value = '';
   $('f-url').value = '';
   $('f-memo').value = '';
-  $('f-notify').checked = false;
-  $('f-notify-date').value = '';
+  // 通知ありが標準
+  $('f-notify').checked = true;
+  $('f-notify-date').value = todayStr();
   $('f-notify-hour').value = 8;
   $('f-notify-min').value = 0;
   document.querySelector('input[name="f-sound"][value="silent"]').checked = true;
-  notifyOptions.classList.remove('open');
+  notifyOptions.classList.add('open');
 }
 
 function startEdit(task) {
@@ -327,13 +328,29 @@ function render() {
     const cat = findCategory(task.category);
     if (cat) note.style.background = cat.color;
 
+    // 一覧にはタスク名と締め切りだけを表示する
     const title = document.createElement('div');
     title.className = 'note-title';
-    title.textContent = task.title + (task.memo ? ' 📝' : '');
+    title.textContent = task.title;
     note.appendChild(title);
 
     const meta = document.createElement('div');
     meta.className = 'note-meta';
+    if (task.deadline) {
+      const el = document.createElement('div');
+      el.textContent = `📅 締め切り: ${fmtDate(task.deadline)}` + (isOverdue(task) ? ' (期限切れ!)' : '');
+      meta.appendChild(el);
+    }
+    const hint = document.createElement('div');
+    hint.className = 'detail-hint';
+    hint.textContent = '▸ クリックで詳細';
+    meta.appendChild(hint);
+    note.appendChild(meta);
+
+    // 残りの情報はクリックで開く詳細に入れる
+    const detail = document.createElement('div');
+    detail.className = 'note-detail';
+    detail.hidden = true;
 
     const badges = document.createElement('div');
     if (cat) {
@@ -354,23 +371,17 @@ function render() {
       b.textContent = `🔁 ${REPEAT_LABEL[task.repeat]}`;
       badges.appendChild(b);
     }
-    meta.appendChild(badges);
+    detail.appendChild(badges);
 
-    if (task.deadline) {
-      const el = document.createElement('div');
-      el.textContent = `📅 期限: ${fmtDate(task.deadline)}` + (isOverdue(task) ? ' (期限切れ!)' : '');
-      meta.appendChild(el);
-    }
     if (task.target) {
       const el = document.createElement('div');
       el.textContent = `📮 提出先: ${task.target}`;
-      meta.appendChild(el);
+      detail.appendChild(el);
     }
     if (task.notify && task.notifyAt && !task.done) {
       const el = document.createElement('div');
-      el.innerHTML = `<span class="badge">${task.sound ? '🔔 音あり' : '🔕 音なし'}</span>`;
-      el.append(`通知: ${fmtDateTime(task.notifyAt)}`);
-      meta.appendChild(el);
+      el.textContent = `${task.sound ? '🔔' : '🔕'} 通知: ${fmtDateTime(task.notifyAt)}`;
+      detail.appendChild(el);
     }
     if (task.url) {
       const el = document.createElement('div');
@@ -378,23 +389,22 @@ function render() {
       a.textContent = `🔗 ${task.url}`;
       a.addEventListener('click', () => window.api.openUrl(task.url));
       el.appendChild(a);
-      meta.appendChild(el);
+      detail.appendChild(el);
     }
-    note.appendChild(meta);
-
-    // メモはタスクをクリックすると開閉する
     if (task.memo) {
       const memo = document.createElement('div');
       memo.className = 'note-memo';
       memo.textContent = task.memo;
-      memo.hidden = true;
-      note.appendChild(memo);
-      note.addEventListener('click', (e) => {
-        if (e.target.closest('button, a')) return;
-        memo.hidden = !memo.hidden;
-      });
-      note.classList.add('has-memo');
+      detail.appendChild(memo);
     }
+    note.appendChild(detail);
+
+    note.classList.add('has-memo');
+    note.addEventListener('click', (e) => {
+      if (e.target.closest('button, a')) return;
+      detail.hidden = !detail.hidden;
+      hint.textContent = detail.hidden ? '▸ クリックで詳細' : '▾ 詳細を閉じる';
+    });
 
     const actions = document.createElement('div');
     actions.className = 'note-actions';

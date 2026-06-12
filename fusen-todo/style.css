@@ -337,6 +337,27 @@ button.ghost {
   cursor: pointer;
 }
 
+.note-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #5d5326;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.15);
+}
+.note-detail a {
+  color: #2a6ab0;
+  word-break: break-all;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.detail-hint {
+  font-size: 11px;
+  color: #a39653;
+}
+
 .note-memo {
   font-size: 13px;
   color: #5d5326;
