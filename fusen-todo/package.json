@@ -4,9 +4,23 @@
   "description": "付箋風TODOアプリ(デスクトップリマインド付き)",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.fusen.todo",
+    "productName": "FusenTodo",
+    "directories": {
+      "output": "dist-build"
+    },
+    "win": {
+      "target": [
+        { "target": "zip", "arch": ["x64"] }
+      ]
+    }
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^26.15.2"
   }
 }
