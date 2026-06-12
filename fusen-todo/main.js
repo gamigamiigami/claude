@@ -11,17 +11,73 @@ const reminderWindows = [];
 
 const dataFile = () => path.join(app.getPath('userData'), 'tasks.json');
 
-function loadTasks() {
+const DEFAULT_CATEGORIES = [
+  { name: '学級', color: '#ffd9e8' },
+  { name: '授業', color: '#d4e9ff' },
+  { name: '部活', color: '#d9f5d0' },
+  { name: '学校', color: '#fff3b8' },
+  { name: 'その他', color: '#eee0ff' }
+];
+
+function loadData() {
   try {
-    return JSON.parse(fs.readFileSync(dataFile(), 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(dataFile(), 'utf8'));
+    // 旧形式(タスクの配列のみ)からの移行
+    if (Array.isArray(raw)) {
+      return { tasks: raw, categories: [...DEFAULT_CATEGORIES] };
+    }
+    return {
+      tasks: raw.tasks || [],
+      categories:
+        raw.categories && raw.categories.length
+          ? raw.categories
+          : [...DEFAULT_CATEGORIES]
+    };
   } catch {
-    return [];
+    return { tasks: [], categories: [...DEFAULT_CATEGORIES] };
   }
 }
 
-function saveTasks(tasks) {
+function saveData(data) {
   fs.mkdirSync(path.dirname(dataFile()), { recursive: true });
-  fs.writeFileSync(dataFile(), JSON.stringify(tasks, null, 2), 'utf8');
+  fs.writeFileSync(dataFile(), JSON.stringify(data, null, 2), 'utf8');
+}
+
+function loadTasks() {
+  return loadData().tasks;
+}
+
+function saveTasks(tasks) {
+  const data = loadData();
+  data.tasks = tasks;
+  saveData(data);
+}
+
+// 繰り返しタスクの「完了」: 期限と通知時間を次の回(未来)まで進める
+function advanceRepeat(task) {
+  const step = (d) => {
+    if (task.repeat === 'daily') d.setDate(d.getDate() + 1);
+    else if (task.repeat === 'weekly') d.setDate(d.getDate() + 7);
+    else d.setMonth(d.getMonth() + 1);
+  };
+  const advancePast = (d, endOfDay) => {
+    do {
+      step(d);
+    } while (
+      (endOfDay ? new Date(d).setHours(23, 59, 59, 999) : d.getTime()) <=
+      Date.now()
+    );
+    return d;
+  };
+  const pad = (n) => String(n).padStart(2, '0');
+  if (task.deadline) {
+    const d = advancePast(new Date(task.deadline + 'T00:00:00'), true);
+    task.deadline = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  if (task.notifyAt) {
+    task.notifyAt = advancePast(new Date(task.notifyAt), false).toISOString();
+    task.notified = false;
+  }
 }
 
 function createMainWindow() {
@@ -163,10 +219,24 @@ function startScheduler() {
 
 // ===== IPC =====
 
-ipcMain.handle('get-tasks', () => loadTasks());
+ipcMain.handle('get-data', () => loadData());
 
 ipcMain.handle('save-tasks', (_e, tasks) => {
   saveTasks(tasks);
+  return true;
+});
+
+ipcMain.handle('save-categories', (_e, categories) => {
+  const data = loadData();
+  data.categories = categories;
+  saveData(data);
+  return true;
+});
+
+ipcMain.handle('get-autostart', () => app.getLoginItemSettings().openAtLogin);
+
+ipcMain.handle('set-autostart', (_e, on) => {
+  app.setLoginItemSettings({ openAtLogin: !!on });
   return true;
 });
 
@@ -180,7 +250,11 @@ ipcMain.on('reminder-action', (e, { taskId, action }) => {
   const task = tasks.find((t) => t.id === taskId);
   if (task) {
     if (action === 'done') {
-      task.done = true;
+      if (task.repeat && task.repeat !== 'none') {
+        advanceRepeat(task);
+      } else {
+        task.done = true;
+      }
     } else if (action === 'snooze') {
       task.notified = false;
       task.notifyAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();

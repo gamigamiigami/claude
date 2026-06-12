@@ -78,6 +78,7 @@ main {
 #form-card input[type="url"],
 #form-card input[type="date"],
 #form-card input[type="datetime-local"],
+#form-card select,
 #form-card textarea {
   padding: 6px 8px;
   border: 1px solid #d8c75f;
@@ -85,6 +86,31 @@ main {
   background: #fff;
   font-size: 14px;
   font-family: inherit;
+}
+
+#new-cat-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#new-cat-row input[type="text"] {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #d8c75f;
+  border-radius: 3px;
+  font-size: 14px;
+  font-family: inherit;
+}
+#new-cat-row input[type="color"] {
+  width: 36px;
+  height: 32px;
+  border: 1px solid #d8c75f;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+#new-cat-row button {
+  padding: 6px 12px;
 }
 
 .notify-row {
@@ -174,7 +200,7 @@ button.ghost {
 }
 
 .note.overdue {
-  background: #ffe3cf;
+  outline: 2px solid #e06030;
 }
 
 .note-title {
@@ -203,7 +229,8 @@ button.ghost {
   font-size: 11px;
   padding: 1px 7px;
   border-radius: 9px;
-  background: #ece08e;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   color: #5d5326;
   margin-right: 4px;
 }
@@ -263,4 +290,28 @@ button.ghost {
   color: #a39653;
   padding: 30px 0;
   font-size: 13px;
+}
+
+/* ===== 下部の設定バー ===== */
+
+main {
+  padding-bottom: 46px;
+}
+
+#settings-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 14px;
+  background: #f7e98a;
+  border-top: 1px solid #e0cf6a;
+  font-size: 12px;
+  color: #5d5326;
+}
+#settings-bar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
 }

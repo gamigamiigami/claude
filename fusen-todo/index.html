@@ -16,8 +16,24 @@
       <label>タスク名 *
         <input type="text" id="f-title" placeholder="例: レポート提出" />
       </label>
+      <label>カテゴリ
+        <select id="f-category"></select>
+      </label>
+      <div id="new-cat-row" hidden>
+        <input type="text" id="nc-name" placeholder="新しいカテゴリ名" />
+        <input type="color" id="nc-color" value="#ffd9b8" title="付箋の色" />
+        <button type="button" class="primary" id="nc-add">追加</button>
+      </div>
       <label>期限
         <input type="date" id="f-deadline" />
+      </label>
+      <label>繰り返し
+        <select id="f-repeat">
+          <option value="none">なし</option>
+          <option value="daily">毎日</option>
+          <option value="weekly">毎週</option>
+          <option value="monthly">毎月</option>
+        </select>
       </label>
       <label>提出先
         <input type="text" id="f-target" placeholder="例: 山田先生 / 経理部" />
@@ -52,6 +68,10 @@
     <div id="list"></div>
     <div id="empty" hidden>タスクはありません。「＋」から追加してください。</div>
   </main>
+
+  <footer id="settings-bar">
+    <label><input type="checkbox" id="autostart" /> 🚀 PC起動時に自動で起動する</label>
+  </footer>
 
   <script src="renderer.js"></script>
 </body>

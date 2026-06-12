@@ -1,8 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-  getTasks: () => ipcRenderer.invoke('get-tasks'),
+  getData: () => ipcRenderer.invoke('get-data'),
   saveTasks: (tasks) => ipcRenderer.invoke('save-tasks', tasks),
+  saveCategories: (categories) => ipcRenderer.invoke('save-categories', categories),
+  getAutostart: () => ipcRenderer.invoke('get-autostart'),
+  setAutostart: (on) => ipcRenderer.invoke('set-autostart', on),
   openUrl: (url) => ipcRenderer.invoke('open-url', url),
   reminderAction: (taskId, action) =>
     ipcRenderer.send('reminder-action', { taskId, action }),
