@@ -9,7 +9,7 @@
   },
   "build": {
     "appId": "com.fusen.todo",
-    "productName": "FusenTodo",
+    "productName": "ToDo丸",
     "directories": {
       "output": "dist-build"
     },
