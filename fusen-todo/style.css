@@ -267,6 +267,11 @@ button.ghost {
   outline: 2px solid #e06030;
 }
 
+.note.protected {
+  opacity: 0.75;
+  border: 2px dashed #888;
+}
+
 .note-title {
   font-size: 15px;
   font-weight: 600;

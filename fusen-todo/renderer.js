@@ -1,6 +1,6 @@
 let tasks = [];
 let categories = [];
-let editingId = null; // 編集中のタスクID(nullなら新規登録)
+let editingId = null;
 let currentTab = 'active';
 let sortBy = localStorage.getItem('sortBy') || 'deadline';
 
@@ -11,6 +11,59 @@ const notifyOptions = $('notify-options');
 const REPEAT_LABEL = { daily: '毎日', weekly: '毎週', monthly: '毎月' };
 const PRIORITY_LABEL = { high: '🔴 高', mid: '🟡 中', low: '🔵 低' };
 const PRIORITY_ORDER = { high: 0, mid: 1, low: 2 };
+
+// ===== パスワード暗号化 =====
+
+async function hashPassword(password) {
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(password));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function askPasswordForSave() {
+  return new Promise((resolve) => {
+    const protect = confirm(
+      'このタスクをパスワードで保護しますか?\n\nOK: パスワードをかける\nキャンセル: パスワードなしで保存'
+    );
+    if (!protect) {
+      resolve(null);
+      return;
+    }
+    let password = '';
+    while (!password) {
+      password = prompt('保存用パスワードを入力してください:');
+      if (password === null) {
+        resolve(null);
+        return;
+      }
+    }
+    let confirm2 = '';
+    while (confirm2 !== password) {
+      confirm2 = prompt('パスワードをもう一度入力してください:');
+      if (confirm2 === null) {
+        resolve(null);
+        return;
+      }
+      if (confirm2 !== password) {
+        alert('パスワードが一致しません');
+      }
+    }
+    hashPassword(password).then(resolve);
+  });
+}
+
+async function askPasswordForLoad() {
+  return new Promise((resolve) => {
+    const password = prompt('このタスクを表示するのにパスワードが必要です。\nパスワードを入力してください:');
+    if (!password) {
+      resolve(null);
+      return;
+    }
+    hashPassword(password).then(resolve);
+  });
+}
 
 function findCategory(name) {
   return categories.find((c) => c.name === name) || null;
@@ -96,7 +149,6 @@ $('f-cancel').addEventListener('click', () => {
 
 $('f-notify').addEventListener('change', (e) => {
   notifyOptions.classList.toggle('open', e.target.checked);
-  // 通知日が空なら今日を入れておく
   if (e.target.checked && !$('f-notify-date').value) {
     $('f-notify-date').value = todayStr();
   }
@@ -108,7 +160,6 @@ function todayStr() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-// 時・分の入力は範囲内で止める(回転させない)
 function clampField(input) {
   const min = Number(input.min);
   const max = Number(input.max);
@@ -133,7 +184,6 @@ function resetForm() {
   $('f-target').value = '';
   $('f-url').value = '';
   $('f-memo').value = '';
-  // 通知ありが標準
   $('f-notify').checked = true;
   $('f-notify-date').value = todayStr();
   $('f-notify-hour').value = 8;
@@ -162,7 +212,7 @@ function startEdit(task) {
     $('f-notify-hour').value = d.getHours();
     $('f-notify-min').value = d.getMinutes();
   } else {
-    $('f-notify-date').value = '';
+    $('f-notify-date').value = todayStr();
     $('f-notify-hour').value = 8;
     $('f-notify-min').value = 0;
   }
@@ -224,7 +274,6 @@ $('f-save').addEventListener('click', async () => {
     const task = tasks.find((t) => t.id === editingId);
     if (task) {
       Object.assign(task, fields);
-      // 通知時間が未来なら再通知できるようにリセット
       task.notified = notifyAt ? new Date(notifyAt).getTime() <= Date.now() : false;
     }
   } else {
@@ -233,6 +282,7 @@ $('f-save').addEventListener('click', async () => {
       ...fields,
       notified: false,
       done: false,
+      saved: false,
       createdAt: new Date().toISOString()
     });
   }
@@ -243,7 +293,7 @@ $('f-save').addEventListener('click', async () => {
   render();
 });
 
-// ===== 繰り返しタスクの完了処理(次の回へ進める) =====
+// ===== 繰り返しタスクの完了処理 =====
 
 function advanceRepeat(task) {
   const step = (d) => {
@@ -313,25 +363,38 @@ function render() {
   const list = $('list');
   list.innerHTML = '';
 
-  const visible = tasks.filter((t) =>
-    currentTab === 'done' ? t.done : !t.done
-  );
+  const visible = tasks.filter((t) => {
+    if (currentTab === 'done') return t.done;
+    if (currentTab === 'saved') return t.saved;
+    return !t.done && !t.saved;
+  });
   $('empty').hidden = visible.length > 0;
   $('empty').textContent =
     currentTab === 'done'
       ? '完了したタスクはまだありません。'
-      : 'タスクはありません。「＋」から追加してください。';
+      : currentTab === 'saved'
+        ? '保存したタスクはまだありません。'
+        : 'タスクはありません。「＋」から追加してください。';
 
   for (const task of sortTasks(visible)) {
+    // パスワード保護されていて保存タブの場合、パスワード確認
+    if (currentTab === 'saved' && task.passwordHash && !task.unlocked) {
+      // パスワード保護されているので表示スキップ
+      continue;
+    }
+
     const note = document.createElement('div');
-    note.className = 'note' + (task.done ? ' done' : '') + (isOverdue(task) ? ' overdue' : '');
+    note.className =
+      'note' +
+      (task.done ? ' done' : '') +
+      (isOverdue(task) ? ' overdue' : '') +
+      (task.passwordHash ? ' protected' : '');
     const cat = findCategory(task.category);
     if (cat) note.style.background = cat.color;
 
-    // 一覧にはタスク名と締め切りだけを表示する
     const title = document.createElement('div');
     title.className = 'note-title';
-    title.textContent = task.title;
+    title.textContent = task.title + (task.passwordHash ? ' 🔐' : '');
     note.appendChild(title);
 
     const meta = document.createElement('div');
@@ -347,7 +410,6 @@ function render() {
     meta.appendChild(hint);
     note.appendChild(meta);
 
-    // 残りの情報はクリックで開く詳細に入れる
     const detail = document.createElement('div');
     detail.className = 'note-detail';
     detail.hidden = true;
@@ -408,11 +470,24 @@ function render() {
 
     const actions = document.createElement('div');
     actions.className = 'note-actions';
-    if (!task.done) {
+    if (!task.done && !task.saved) {
       const editBtn = document.createElement('button');
       editBtn.textContent = '✏ 編集';
       editBtn.addEventListener('click', () => startEdit(task));
       actions.appendChild(editBtn);
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = '💾 保存';
+      saveBtn.addEventListener('click', async () => {
+        const passwordHash = await askPasswordForSave();
+        if (passwordHash === null) return; // キャンセル
+        task.saved = true;
+        task.savedAt = new Date().toISOString();
+        task.passwordHash = passwordHash || null;
+        await window.api.saveTasks(tasks);
+        render();
+      });
+      actions.appendChild(saveBtn);
 
       const doneBtn = document.createElement('button');
       doneBtn.className = 'done-btn';
@@ -428,7 +503,18 @@ function render() {
         render();
       });
       actions.appendChild(doneBtn);
-    } else {
+    } else if (task.saved && !task.done) {
+      const restoreBtn = document.createElement('button');
+      restoreBtn.textContent = '↩ 戻す';
+      restoreBtn.addEventListener('click', async () => {
+        task.saved = false;
+        delete task.savedAt;
+        delete task.passwordHash;
+        await window.api.saveTasks(tasks);
+        render();
+      });
+      actions.appendChild(restoreBtn);
+    } else if (task.done) {
       const undoBtn = document.createElement('button');
       undoBtn.textContent = '↩ 戻す';
       undoBtn.addEventListener('click', async () => {
@@ -452,15 +538,64 @@ function render() {
 
     list.appendChild(note);
   }
-}
 
-// ===== 自動起動設定 =====
+  // パスワード保護タスクのロック状態を表示
+  if (currentTab === 'saved') {
+    const protected_tasks = tasks.filter(
+      (t) => t.saved && t.passwordHash && !t.unlocked
+    );
+    for (const task of protected_tasks) {
+      const note = document.createElement('div');
+      note.className = 'note protected';
+      const cat = findCategory(task.category);
+      if (cat) note.style.background = cat.color;
+
+      const title = document.createElement('div');
+      title.className = 'note-title';
+      title.textContent = task.title + ' 🔐';
+      note.appendChild(title);
+
+      const meta = document.createElement('div');
+      meta.className = 'note-meta';
+      const el = document.createElement('div');
+      el.textContent = '🔒 パスワード保護';
+      meta.appendChild(el);
+      note.appendChild(meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'note-actions';
+      const unlockBtn = document.createElement('button');
+      unlockBtn.textContent = '🔓 ロック解除';
+      unlockBtn.addEventListener('click', async () => {
+        const hash = await askPasswordForLoad();
+        if (hash === task.passwordHash) {
+          task.unlocked = true;
+          render();
+        } else {
+          alert('パスワードが一致しません');
+        }
+      });
+      actions.appendChild(unlockBtn);
+      const delBtn = document.createElement('button');
+      delBtn.className = 'del-btn';
+      delBtn.textContent = '🗑 削除';
+      delBtn.addEventListener('click', async () => {
+        tasks = tasks.filter((t) => t.id !== task.id);
+        await window.api.saveTasks(tasks);
+        render();
+      });
+      actions.appendChild(delBtn);
+      note.appendChild(actions);
+
+      list.appendChild(note);
+    }
+  }
+}
 
 $('autostart').addEventListener('change', (e) => {
   window.api.setAutostart(e.target.checked);
 });
 
-// リマインドポップアップ側で完了/スヌーズされた時に同期する
 window.api.onTasksUpdated((updated) => {
   tasks = updated;
   render();
