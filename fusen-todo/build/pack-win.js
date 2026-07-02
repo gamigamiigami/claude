@@ -9,7 +9,16 @@ packager({
   out: path.join(__dirname, '..', 'dist'),
   overwrite: true,
   icon: path.join(__dirname, 'icon.ico'),
-  ignore: [/^\/dist/, /^\/dist-build/, /^\/download/, /^\/release-parts/, /^\/build\/pack-win\.js$/],
+  // アプリはelectron/path/fs(いずれも組み込み)以外のnpmパッケージを使わないので、
+  // node_modules(ビルドツール一式)は丸ごと除外する
+  ignore: [
+    /^\/dist/,
+    /^\/dist-build/,
+    /^\/download/,
+    /^\/release-parts/,
+    /^\/node_modules/,
+    /^\/build\/pack-win\.js$/
+  ],
   download: {
     checksums: {
       'electron-v31.7.7-win32-x64.zip':
