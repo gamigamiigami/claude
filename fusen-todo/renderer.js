@@ -85,6 +85,35 @@ function openModal({ title, message, fields = [], buttons }) {
   });
 }
 
+// 新しいパスワードを2回入力させる。戻り値はハッシュ文字列、キャンセルならnull
+async function askNewPassword() {
+  while (true) {
+    const pw = await openModal({
+      title: '🔒 パスワードを設定',
+      message: '保存用のパスワードを入力してください。',
+      fields: [
+        { id: 'pw1', label: 'パスワード', type: 'password' },
+        { id: 'pw2', label: 'パスワード(確認)', type: 'password' }
+      ],
+      buttons: [
+        { label: '設定する', value: 'ok', primary: true },
+        { label: 'キャンセル', value: 'cancel', cancel: true }
+      ]
+    });
+    if (!pw) return null;
+    const { pw1, pw2 } = pw.values;
+    if (!pw1) {
+      alert('パスワードを入力してください');
+      continue;
+    }
+    if (pw1 !== pw2) {
+      alert('パスワードが一致しません');
+      continue;
+    }
+    return hashPassword(pw1);
+  }
+}
+
 // 戻り値: { aborted: true } なら保存自体を中止、passwordHash は null(パスワードなし)か文字列
 async function askPasswordForSave() {
   const choice = await openModal({
@@ -99,32 +128,9 @@ async function askPasswordForSave() {
   if (!choice) return { aborted: true };
   if (choice.action === 'no-protect') return { aborted: false, passwordHash: null };
 
-  while (true) {
-    const pw = await openModal({
-      title: '🔒 パスワードを設定',
-      message: '保存用のパスワードを入力してください。',
-      fields: [
-        { id: 'pw1', label: 'パスワード', type: 'password' },
-        { id: 'pw2', label: 'パスワード(確認)', type: 'password' }
-      ],
-      buttons: [
-        { label: '設定する', value: 'ok', primary: true },
-        { label: 'キャンセル', value: 'cancel', cancel: true }
-      ]
-    });
-    if (!pw) return { aborted: true };
-    const { pw1, pw2 } = pw.values;
-    if (!pw1) {
-      alert('パスワードを入力してください');
-      continue;
-    }
-    if (pw1 !== pw2) {
-      alert('パスワードが一致しません');
-      continue;
-    }
-    const hash = await hashPassword(pw1);
-    return { aborted: false, passwordHash: hash };
-  }
+  const hash = await askNewPassword();
+  if (hash === null) return { aborted: true };
+  return { aborted: false, passwordHash: hash };
 }
 
 async function askPasswordForLoad() {
@@ -590,6 +596,31 @@ function render() {
       });
       actions.appendChild(doneBtn);
     } else if (task.saved && !task.done) {
+      if (task.passwordHash) {
+        // 保護中(かつロック解除済み)のタスクはパスワードを外せる
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = '🔓 パスワード解除';
+        removeBtn.addEventListener('click', async () => {
+          if (!confirm('パスワード保護を外しますか?')) return;
+          task.passwordHash = null;
+          await persistTasks();
+          render();
+        });
+        actions.appendChild(removeBtn);
+      } else {
+        // パスワードなしで保存されたタスクに、あとからパスワードをかけられる
+        const protectBtn = document.createElement('button');
+        protectBtn.textContent = '🔒 パスワード設定';
+        protectBtn.addEventListener('click', async () => {
+          const hash = await askNewPassword();
+          if (hash === null) return;
+          task.passwordHash = hash;
+          await persistTasks();
+          render();
+        });
+        actions.appendChild(protectBtn);
+      }
+
       const restoreBtn = document.createElement('button');
       restoreBtn.textContent = '↩ 戻す';
       restoreBtn.addEventListener('click', async () => {
