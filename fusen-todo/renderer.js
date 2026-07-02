@@ -22,20 +22,21 @@ async function hashPassword(password) {
     .join('');
 }
 
+// 戻り値: { aborted: true } なら保存自体を中止、passwordHash は null(パスワードなし)か文字列
 async function askPasswordForSave() {
   return new Promise((resolve) => {
     const protect = confirm(
       'このタスクをパスワードで保護しますか?\n\nOK: パスワードをかける\nキャンセル: パスワードなしで保存'
     );
     if (!protect) {
-      resolve(null);
+      resolve({ aborted: false, passwordHash: null });
       return;
     }
     let password = '';
     while (!password) {
       password = prompt('保存用パスワードを入力してください:');
       if (password === null) {
-        resolve(null);
+        resolve({ aborted: true });
         return;
       }
     }
@@ -43,14 +44,14 @@ async function askPasswordForSave() {
     while (confirm2 !== password) {
       confirm2 = prompt('パスワードをもう一度入力してください:');
       if (confirm2 === null) {
-        resolve(null);
+        resolve({ aborted: true });
         return;
       }
       if (confirm2 !== password) {
         alert('パスワードが一致しません');
       }
     }
-    hashPassword(password).then(resolve);
+    hashPassword(password).then((h) => resolve({ aborted: false, passwordHash: h }));
   });
 }
 
@@ -479,11 +480,11 @@ function render() {
       const saveBtn = document.createElement('button');
       saveBtn.textContent = '💾 保存';
       saveBtn.addEventListener('click', async () => {
-        const passwordHash = await askPasswordForSave();
-        if (passwordHash === null) return; // キャンセル
+        const result = await askPasswordForSave();
+        if (result.aborted) return; // 保存自体をキャンセル
         task.saved = true;
         task.savedAt = new Date().toISOString();
-        task.passwordHash = passwordHash || null;
+        task.passwordHash = result.passwordHash;
         await window.api.saveTasks(tasks);
         render();
       });
