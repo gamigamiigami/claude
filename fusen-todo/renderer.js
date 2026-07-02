@@ -480,6 +480,9 @@ function render() {
     title.textContent = task.title + (task.passwordHash ? ' 🔐' : '');
     note.appendChild(title);
 
+    const justUnlocked = !!task.justUnlocked;
+    delete task.justUnlocked;
+
     const meta = document.createElement('div');
     meta.className = 'note-meta';
     if (task.deadline) {
@@ -492,9 +495,6 @@ function render() {
     hint.textContent = justUnlocked ? '▾ 詳細を閉じる' : '▸ クリックで詳細';
     meta.appendChild(hint);
     note.appendChild(meta);
-
-    const justUnlocked = !!task.justUnlocked;
-    delete task.justUnlocked;
 
     const detail = document.createElement('div');
     detail.className = 'note-detail';
