@@ -382,6 +382,72 @@ button.ghost {
   font-size: 13px;
 }
 
+/* ===== モーダルダイアログ ===== */
+
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 34, 10, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal-box {
+  background: #fffce0;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  padding: 18px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #4a4220;
+}
+
+.modal-message {
+  font-size: 13px;
+  color: #5d5326;
+  white-space: pre-wrap;
+}
+
+.modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: #7a6e3a;
+}
+.modal-fields input {
+  padding: 7px 8px;
+  border: 1px solid #d8c75f;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
 /* ===== 下部の設定バー ===== */
 
 main {

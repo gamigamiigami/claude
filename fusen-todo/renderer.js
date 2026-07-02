@@ -22,48 +22,130 @@ async function hashPassword(password) {
     .join('');
 }
 
-// 戻り値: { aborted: true } なら保存自体を中止、passwordHash は null(パスワードなし)か文字列
-async function askPasswordForSave() {
+// ===== モーダルダイアログ(window.prompt/confirmはElectronで動作しないため自前実装) =====
+
+function openModal({ title, message, fields = [], buttons }) {
   return new Promise((resolve) => {
-    const protect = confirm(
-      'このタスクをパスワードで保護しますか?\n\nOK: パスワードをかける\nキャンセル: パスワードなしで保存'
-    );
-    if (!protect) {
-      resolve({ aborted: false, passwordHash: null });
-      return;
+    const overlay = $('modal-overlay');
+    $('modal-title').textContent = title || '';
+    $('modal-message').textContent = message || '';
+
+    const fieldsBox = $('modal-fields');
+    fieldsBox.innerHTML = '';
+    const inputs = {};
+    for (const f of fields) {
+      const label = document.createElement('label');
+      label.textContent = f.label;
+      const input = document.createElement('input');
+      input.type = f.type || 'text';
+      input.autocomplete = 'off';
+      label.appendChild(input);
+      fieldsBox.appendChild(label);
+      inputs[f.id] = input;
     }
-    let password = '';
-    while (!password) {
-      password = prompt('保存用パスワードを入力してください:');
-      if (password === null) {
-        resolve({ aborted: true });
-        return;
+
+    const actionsBox = $('modal-actions');
+    actionsBox.innerHTML = '';
+
+    const finish = (result) => {
+      overlay.hidden = true;
+      document.removeEventListener('keydown', onKeydown);
+      resolve(result);
+    };
+
+    const onKeydown = (e) => {
+      if (e.key === 'Escape') finish(null);
+      if (e.key === 'Enter') {
+        const primaryBtn = actionsBox.querySelector('button.primary');
+        if (primaryBtn) primaryBtn.click();
       }
+    };
+
+    for (const b of buttons) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = b.label;
+      btn.className = b.primary ? 'primary' : 'ghost';
+      btn.addEventListener('click', () => {
+        if (b.cancel) {
+          finish(null);
+          return;
+        }
+        const values = {};
+        for (const key in inputs) values[key] = inputs[key].value;
+        finish({ action: b.value, values });
+      });
+      actionsBox.appendChild(btn);
     }
-    let confirm2 = '';
-    while (confirm2 !== password) {
-      confirm2 = prompt('パスワードをもう一度入力してください:');
-      if (confirm2 === null) {
-        resolve({ aborted: true });
-        return;
-      }
-      if (confirm2 !== password) {
-        alert('パスワードが一致しません');
-      }
-    }
-    hashPassword(password).then((h) => resolve({ aborted: false, passwordHash: h }));
+
+    document.addEventListener('keydown', onKeydown);
+    overlay.hidden = false;
+    const firstInput = fieldsBox.querySelector('input');
+    if (firstInput) firstInput.focus();
   });
 }
 
-async function askPasswordForLoad() {
-  return new Promise((resolve) => {
-    const password = prompt('このタスクを表示するのにパスワードが必要です。\nパスワードを入力してください:');
-    if (!password) {
-      resolve(null);
-      return;
-    }
-    hashPassword(password).then(resolve);
+// 戻り値: { aborted: true } なら保存自体を中止、passwordHash は null(パスワードなし)か文字列
+async function askPasswordForSave() {
+  const choice = await openModal({
+    title: '💾 タスクを保存',
+    message: 'このタスクをパスワードで保護しますか?',
+    buttons: [
+      { label: '🔓 かけない', value: 'no-protect', primary: true },
+      { label: '🔒 パスワードをかける', value: 'protect' },
+      { label: 'キャンセル', value: 'cancel', cancel: true }
+    ]
   });
+  if (!choice) return { aborted: true };
+  if (choice.action === 'no-protect') return { aborted: false, passwordHash: null };
+
+  while (true) {
+    const pw = await openModal({
+      title: '🔒 パスワードを設定',
+      message: '保存用のパスワードを入力してください。',
+      fields: [
+        { id: 'pw1', label: 'パスワード', type: 'password' },
+        { id: 'pw2', label: 'パスワード(確認)', type: 'password' }
+      ],
+      buttons: [
+        { label: '設定する', value: 'ok', primary: true },
+        { label: 'キャンセル', value: 'cancel', cancel: true }
+      ]
+    });
+    if (!pw) return { aborted: true };
+    const { pw1, pw2 } = pw.values;
+    if (!pw1) {
+      alert('パスワードを入力してください');
+      continue;
+    }
+    if (pw1 !== pw2) {
+      alert('パスワードが一致しません');
+      continue;
+    }
+    const hash = await hashPassword(pw1);
+    return { aborted: false, passwordHash: hash };
+  }
+}
+
+async function askPasswordForLoad() {
+  const result = await openModal({
+    title: '🔓 ロック解除',
+    message: 'このタスクを表示するにはパスワードが必要です。',
+    fields: [{ id: 'pw', label: 'パスワード', type: 'password' }],
+    buttons: [
+      { label: '解除する', value: 'ok', primary: true },
+      { label: 'キャンセル', value: 'cancel', cancel: true }
+    ]
+  });
+  if (!result) return null;
+  return hashPassword(result.values.pw);
+}
+
+// ロック解除状態(unlocked/justUnlocked)は表示専用のフラグなので、
+// ディスクに保存する前に取り除く(保存すると次回起動時にパスワードなしで見えてしまう)
+async function persistTasks() {
+  const clean = tasks.map(({ unlocked, justUnlocked, ...rest }) => rest);
+  await window.api.saveTasks(clean);
 }
 
 function findCategory(name) {
@@ -288,7 +370,7 @@ $('f-save').addEventListener('click', async () => {
     });
   }
 
-  await window.api.saveTasks(tasks);
+  await persistTasks();
   formCard.classList.remove('open');
   resetForm();
   render();
@@ -407,13 +489,16 @@ function render() {
     }
     const hint = document.createElement('div');
     hint.className = 'detail-hint';
-    hint.textContent = '▸ クリックで詳細';
+    hint.textContent = justUnlocked ? '▾ 詳細を閉じる' : '▸ クリックで詳細';
     meta.appendChild(hint);
     note.appendChild(meta);
 
+    const justUnlocked = !!task.justUnlocked;
+    delete task.justUnlocked;
+
     const detail = document.createElement('div');
     detail.className = 'note-detail';
-    detail.hidden = true;
+    detail.hidden = !justUnlocked;
 
     const badges = document.createElement('div');
     if (cat) {
@@ -485,7 +570,7 @@ function render() {
         task.saved = true;
         task.savedAt = new Date().toISOString();
         task.passwordHash = result.passwordHash;
-        await window.api.saveTasks(tasks);
+        await persistTasks();
         render();
       });
       actions.appendChild(saveBtn);
@@ -500,7 +585,7 @@ function render() {
           task.done = true;
           task.doneAt = new Date().toISOString();
         }
-        await window.api.saveTasks(tasks);
+        await persistTasks();
         render();
       });
       actions.appendChild(doneBtn);
@@ -511,7 +596,7 @@ function render() {
         task.saved = false;
         delete task.savedAt;
         delete task.passwordHash;
-        await window.api.saveTasks(tasks);
+        await persistTasks();
         render();
       });
       actions.appendChild(restoreBtn);
@@ -521,7 +606,7 @@ function render() {
       undoBtn.addEventListener('click', async () => {
         task.done = false;
         delete task.doneAt;
-        await window.api.saveTasks(tasks);
+        await persistTasks();
         render();
       });
       actions.appendChild(undoBtn);
@@ -531,7 +616,7 @@ function render() {
     delBtn.textContent = '🗑 削除';
     delBtn.addEventListener('click', async () => {
       tasks = tasks.filter((t) => t.id !== task.id);
-      await window.api.saveTasks(tasks);
+      await persistTasks();
       render();
     });
     actions.appendChild(delBtn);
@@ -569,8 +654,10 @@ function render() {
       unlockBtn.textContent = '🔓 ロック解除';
       unlockBtn.addEventListener('click', async () => {
         const hash = await askPasswordForLoad();
+        if (hash === null) return; // キャンセル
         if (hash === task.passwordHash) {
           task.unlocked = true;
+          task.justUnlocked = true;
           render();
         } else {
           alert('パスワードが一致しません');
@@ -582,7 +669,7 @@ function render() {
       delBtn.textContent = '🗑 削除';
       delBtn.addEventListener('click', async () => {
         tasks = tasks.filter((t) => t.id !== task.id);
-        await window.api.saveTasks(tasks);
+        await persistTasks();
         render();
       });
       actions.appendChild(delBtn);
