@@ -11,6 +11,29 @@ const notifyOptions = $('notify-options');
 const REPEAT_LABEL = { daily: '毎日', weekly: '毎週', monthly: '毎月' };
 const PRIORITY_LABEL = { high: '🔴 高', mid: '🟡 中', low: '🔵 低' };
 const PRIORITY_ORDER = { high: 0, mid: 1, low: 2 };
+const AUTO_RELOCK_MS = 10 * 60 * 1000; // ロック解除後、10分で自動的に再ロックする
+
+// ===== 自動再ロック =====
+
+const unlockTimers = new Map(); // taskId -> timeoutId
+
+function clearAutoRelock(taskId) {
+  const id = unlockTimers.get(taskId);
+  if (id) {
+    clearTimeout(id);
+    unlockTimers.delete(taskId);
+  }
+}
+
+function scheduleAutoRelock(task) {
+  clearAutoRelock(task.id);
+  const id = setTimeout(() => {
+    unlockTimers.delete(task.id);
+    task.unlocked = false;
+    render();
+  }, AUTO_RELOCK_MS);
+  unlockTimers.set(task.id, id);
+}
 
 // ===== パスワード暗号化 =====
 
@@ -597,11 +620,22 @@ function render() {
       actions.appendChild(doneBtn);
     } else if (task.saved && !task.done) {
       if (task.passwordHash) {
-        // 保護中(かつロック解除済み)のタスクはパスワードを外せる
+        // ロック解除中: 再ロックできる(パスワードはそのまま)
+        const relockBtn = document.createElement('button');
+        relockBtn.textContent = '🔒 再ロック';
+        relockBtn.addEventListener('click', () => {
+          clearAutoRelock(task.id);
+          task.unlocked = false;
+          render();
+        });
+        actions.appendChild(relockBtn);
+
+        // 保護そのものを外す
         const removeBtn = document.createElement('button');
-        removeBtn.textContent = '🔓 パスワード解除';
+        removeBtn.textContent = '🚫 保護を解除';
         removeBtn.addEventListener('click', async () => {
           if (!confirm('パスワード保護を外しますか?')) return;
+          clearAutoRelock(task.id);
           task.passwordHash = null;
           await persistTasks();
           render();
@@ -624,6 +658,7 @@ function render() {
       const restoreBtn = document.createElement('button');
       restoreBtn.textContent = '↩ 戻す';
       restoreBtn.addEventListener('click', async () => {
+        clearAutoRelock(task.id);
         task.saved = false;
         delete task.savedAt;
         delete task.passwordHash;
@@ -646,6 +681,7 @@ function render() {
     delBtn.className = 'del-btn';
     delBtn.textContent = '🗑 削除';
     delBtn.addEventListener('click', async () => {
+      clearAutoRelock(task.id);
       tasks = tasks.filter((t) => t.id !== task.id);
       await persistTasks();
       render();
@@ -689,6 +725,7 @@ function render() {
         if (hash === task.passwordHash) {
           task.unlocked = true;
           task.justUnlocked = true;
+          scheduleAutoRelock(task);
           render();
         } else {
           alert('パスワードが一致しません');
@@ -699,6 +736,7 @@ function render() {
       delBtn.className = 'del-btn';
       delBtn.textContent = '🗑 削除';
       delBtn.addEventListener('click', async () => {
+        clearAutoRelock(task.id);
         tasks = tasks.filter((t) => t.id !== task.id);
         await persistTasks();
         render();
